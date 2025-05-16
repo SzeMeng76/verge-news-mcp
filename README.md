@@ -1,121 +1,155 @@
-# The Verge News MCP Server
+```markdown
+# Verge News MCP
 
-[![smithery badge](https://smithery.ai/badge/@manimohans/verge-news-mcp)](https://smithery.ai/server/@manimohans/verge-news-mcp)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-An MCP server that provides tools to fetch and search news from The Verge's RSS feed.
-
-<a href="https://glama.ai/mcp/servers/n6lbwdnbxa">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/n6lbwdnbxa/badge" alt="The Verge News Server MCP server" />
-</a>
+A Model Context Protocol (MCP) server for retrieving and searching news articles from The Verge.
 
 ## Features
 
-- Fetch today's news from The Verge
-- Fetch a random selection of news from The Verge's past week
-- Search for news articles by keyword
+- **Daily News**: Fetch the latest news from The Verge for the current day
+- **News Search**: Search for articles by keyword across a customizable time period
+- **Fast & Lightweight**: Minimal dependencies with efficient news retrieval
+- **TypeScript Support**: Fully typed for better developer experience
 
 ## Installation
 
+### Global Installation
+
 ```bash
-# Clone the repository
-git clone https://github.com/manimohans/verge-news-mcp.git
-cd verge-news-mcp
+npm install -g verge-news-mcp
+```
 
-# Install dependencies
-npm install
+### Using with npx (no installation required)
 
-# Build the project
-npm run build
+```bash
+npx verge-news-mcp
 ```
 
 ## Usage
 
-### Running the server
+### Standalone
+
+Run the MCP server directly to test it:
 
 ```bash
-npm start
+verge-news-mcp
 ```
 
-### Using with Claude for Desktop
+### Integration with MCP Clients
 
-1. Install [Claude for Desktop](https://claude.ai/download)
-2. Open your Claude for Desktop App configuration at:
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+This package implements an MCP server that can be used with any MCP client. Here's an example of how to integrate it with a client using the `ai` package:
 
-3. Add the following configuration:
+```javascript
+import { experimental_createMCPClient as createMCPClient } from 'ai';
+import { Experimental_StdioMCPTransport as MCPStdioTransport } from 'ai/mcp-stdio';
 
-```json
-{
-  "mcpServers": {
-    "verge-news": {
-      "command": "node",
-      "args": ["/absolute/path/to/verge-news-mcp/build/index.js"]
-    }
-  }
-}
+// Configure the MCP client to use verge-news-mcp
+const mcpTransport = new MCPStdioTransport({
+  command: 'npx',
+  args: ['verge-news-mcp'],
+  env: process.env,
+  cwd: process.cwd()
+});
+
+// Create the MCP client
+const mcpClient = await createMCPClient({
+  name: 'verge-news',
+  transport: mcpTransport
+});
+
+// Get available tools
+const tools = await mcpClient.tools();
+
+// Use the tools
+const dailyNews = await tools['get-daily-news'].call({});
+console.log(dailyNews.content[0].text);
+
+const searchResults = await tools['search-news'].call({ keyword: 'AI', days: 7 });
+console.log(searchResults.content[0].text);
 ```
 
-4. Restart Claude for Desktop
+## Available Tools
 
-### Using with Smithery
+### 1. get-daily-news
 
-You can also use this MCP server with [Smithery](https://smithery.dev/), which allows you to easily share and use MCP servers:
+Get the latest news from The Verge for today.
 
-1. Make sure you have Smithery installed:
-```bash
-npm install -g @anthropic-ai/smithery
+**Parameters**: None
+
+**Returns**: A formatted text list of today's news articles.
+
+### 2. search-news
+
+Search for news articles from The Verge by keyword.
+
+**Parameters**:
+- `keyword` (string): Keyword to search for in news articles
+- `days` (number, optional): Number of days to look back (default: 7)
+
+**Returns**: A formatted text list of matching news articles.
+
+## Example Output
+
 ```
+# The Verge - Today's News
 
-2. To use this server via Smithery, run:
-```bash
-smithery use https://github.com/manimohans/verge-news-mcp
+1. The latest iPhone update finally lets you set Google Maps as default
+   Published: Tue, 14 May 2025 16:30:00 GMT
+   Link: https://www.theverge.com/example-link
+   Summary: Apple has finally allowed iOS users to set Google Maps as their default navigation app in the latest update...
+
+---
+
+2. Tesla announces new home battery system with double the capacity
+   Published: Tue, 14 May 2025 14:15:00 GMT
+   Link: https://www.theverge.com/another-example
+   Summary: Tesla's new home battery system offers twice the storage capacity of previous models at a lower price point...
 ```
-
-3. Once installed, you can use it with Claude or any other MCP-compatible application.
-
-#### Smithery Configuration
-
-This repository includes the necessary configuration files for Smithery:
-
-- `Dockerfile`: Defines how to build the Docker container for the MCP server
-- `smithery.yaml`: Configures the MCP server for Smithery, including its capabilities
-
-For more information about Smithery configuration, see the [Smithery documentation](https://smithery.ai/docs/config).
-
-### Available Tools
-
-#### get-daily-news
-
-Fetches the latest news articles from The Verge published in the last 24 hours.
-
-Example query: "What's in the news today from The Verge?"
-
-#### get-weekly-news
-
-Fetches news articles from The Verge published in the last 7 days.
-
-Example query: "Show me The Verge's news from the past week."
-
-**Note:** This tool randomly selects 10 news items from the past week, providing variety each time it's used.
-
-#### search-news
-
-Searches for news articles containing a specific keyword.
-
-Parameters:
-- `keyword`: The term to search for
-- `days` (optional): Number of days to look back (default: 30)
-
-Example query: "Find news articles about AI from The Verge."
 
 ## Development
 
+### Prerequisites
+
+- Node.js 16.x or higher
+- TypeScript 4.9.x or higher
+
+### Setup
+
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/verge-news-mcp.git
+   cd verge-news-mcp
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   ```
+
+3. Build the project
+   ```bash
+   npm run build
+   ```
+
+4. Run locally
+   ```bash
+   npm start
+   ```
+
+### Testing
+
 ```bash
-# Run in development mode
-npm run dev
+npm test
 ```
 
 ## License
 
-ISC
+MIT
+
+## Acknowledgements
+
+- [The Verge](https://www.theverge.com/) for providing the RSS feed
+- [Model Context Protocol](https://modelcontextprotocol.github.io/) for the MCP specification
+```
