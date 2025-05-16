@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -7,168 +9,172 @@ import Parser from "rss-parser";
 const parser = new Parser();
 const VERGE_RSS_URL = "https://www.theverge.com/rss/index.xml";
 
+// 调试日志函数
+function log(message) {
+  console.error(`[VERGE-NEWS-MCP] ${message}`);
+}
+
 // 创建MCP服务器
 const server = new McpServer({
   name: "verge-news",
   version: "1.0.0"
 });
 
-// 定义用于类型检查的接口
-interface NewsItem {
-  title: string;
-  link: string;
-  pubDate: string;
-  creator: string;
-  content: string;
-}
-
-// 辅助函数：获取并解析RSS订阅
-async function fetchVergeNews(): Promise<Parser.Item[]> {
+// 获取新闻函数
+async function getNews(daysBack = 7, keyword = null) {
   try {
+    // 获取RSS feed
     const feed = await parser.parseURL(VERGE_RSS_URL);
-    return feed.items;
-  } catch (error) {
-    console.error("Error fetching RSS feed:", error);
-    return [];
-  }
-}
-
-// 辅助函数：按日期筛选新闻
-function filterNewsByDate(items: Parser.Item[], daysBack: number): Parser.Item[] {
-  const now = new Date();
-  const cutoffDate = new Date(now.setDate(now.getDate() - daysBack));
-  
-  return items.filter((item: Parser.Item) => {
-    if (!item.pubDate) return false;
-    const pubDate = new Date(item.pubDate);
-    return pubDate >= cutoffDate;
-  });
-}
-
-// 辅助函数：按关键词筛选新闻
-function filterNewsByKeyword(items: Parser.Item[], keyword: string): Parser.Item[] {
-  const lowerKeyword = keyword.toLowerCase();
-  
-  return items.filter((item: Parser.Item) => {
-    const title = (item.title || "").toLowerCase();
-    const content = (item.contentSnippet || item.content || "").toLowerCase();
+    if (!feed || !feed.items || feed.items.length === 0) {
+      return [];
+    }
     
-    return title.includes(lowerKeyword) || content.includes(lowerKeyword);
-  });
-}
-
-// 辅助函数：格式化新闻项
-function formatNewsItems(items: Parser.Item[]): NewsItem[] {
-  return items.map((item: Parser.Item) => {
-    return {
+    // 按日期过滤
+    const now = new Date();
+    const cutoffDate = new Date(now.setDate(now.getDate() - daysBack));
+    
+    let filteredItems = feed.items.filter(item => {
+      if (!item.pubDate) return false;
+      return new Date(item.pubDate) >= cutoffDate;
+    });
+    
+    // 按关键词过滤（如果提供）
+    if (keyword) {
+      const lowerKeyword = keyword.toLowerCase();
+      filteredItems = filteredItems.filter(item => {
+        const title = (item.title || "").toLowerCase();
+        const content = (item.contentSnippet || item.content || "").toLowerCase();
+        return title.includes(lowerKeyword) || content.includes(lowerKeyword);
+      });
+    }
+    
+    // 格式化结果
+    return filteredItems.map(item => ({
       title: item.title || "No title",
       link: item.link || "#",
       pubDate: item.pubDate || "Unknown date",
       creator: item.creator || "Unknown author",
       content: item.contentSnippet || item.content || "No content available",
-    };
-  });
+    }));
+  } catch (error) {
+    log(`Error fetching news: ${error}`);
+    return [];
+  }
 }
 
-// 辅助函数：将新闻格式化为简要摘要
-function formatNewsAsBriefSummary(items: NewsItem[], limit: number = 10): string {
+// 格式化为文本
+function formatNewsText(items, limit = 5) {
   if (items.length === 0) {
-    return "No news articles found for the specified time period.";
+    return "No news articles found for the specified criteria.";
   }
   
-  // 限制项目数量
   const limitedItems = items.slice(0, limit);
   
-  return limitedItems.map((item: NewsItem, index: number) => {
-    // 提取简短摘要(前150个字符)
-    const summary = item.content.substring(0, 150).trim() + (item.content.length > 150 ? "..." : "");
+  return limitedItems.map((item, index) => {
+    const summary = item.content.substring(0, 150).trim() + 
+                    (item.content.length > 150 ? "..." : "");
     
     return `
 ${index + 1}. ${item.title}
+   Published: ${item.pubDate}
    Link: ${item.link}
    Summary: ${summary}
    `;
   }).join("\n---\n");
 }
 
-// 注册工具：获取每日新闻
+// 注册工具 - 获取每日新闻
 server.tool(
   "get-daily-news",
   "Get the latest news from The Verge for today",
   {},
   async () => {
-    const allNews = await fetchVergeNews();
-    if (allNews.length === 0) {
+    try {
+      const news = await getNews(1); // 最近1天的新闻
+      const text = formatNewsText(news);
+      
       return {
         content: [
           {
             type: "text",
-            text: "Failed to retrieve news data"
+            text: `# The Verge - Today's News\n\n${text}`
+          }
+        ]
+      };
+    } catch (error) {
+      log(`Error in get-daily-news: ${error}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Error fetching daily news."
           }
         ]
       };
     }
-    
-    const todayNews = filterNewsByDate(allNews, 1); // 过去24小时
-    const formattedNews = formatNewsItems(todayNews);
-    const newsText = formatNewsAsBriefSummary(formattedNews, 10);
-    
-    return {
-      content: [
-        {
-          type: "text",
-          text: `# The Verge - Today's News\n\n${newsText}`
-        }
-      ]
-    };
   }
 );
 
-// 注册工具：搜索新闻
+// 注册工具 - 搜索新闻
 server.tool(
   "search-news",
   "Search for news articles from The Verge by keyword",
   {
     keyword: z.string(),
-    days: z.number().optional().default(30)
+    days: z.number().optional().default(7)
   },
-  async ({ keyword, days = 30 }: { keyword: string; days?: number }) => {
-    const allNews = await fetchVergeNews();
-    if (allNews.length === 0) {
+  async ({ keyword, days = 7 }) => {
+    try {
+      const news = await getNews(days, keyword);
+      const text = formatNewsText(news);
+      
       return {
         content: [
           {
             type: "text",
-            text: "Failed to retrieve news data"
+            text: `# The Verge - Search Results for "${keyword}"\n\n${text}`
+          }
+        ]
+      };
+    } catch (error) {
+      log(`Error in search-news: ${error}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Error searching news."
           }
         ]
       };
     }
-    
-    const filteredByDate = filterNewsByDate(allNews, days);
-    const filteredByKeyword = filterNewsByKeyword(filteredByDate, keyword);
-    const formattedNews = formatNewsItems(filteredByKeyword);
-    const newsText = formatNewsAsBriefSummary(formattedNews, 10);
-    
-    return {
-      content: [
-        {
-          type: "text",
-          text: `# The Verge - Search Results for "${keyword}"\n\n${newsText}`
-        }
-      ]
-    };
   }
 );
 
-// 主函数：启动服务器
-async function main(): Promise<void> {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.log('Verge News MCP Server running on stdio');
+// 启动服务器
+async function main() {
+  try {
+    log("Starting Verge News MCP Server...");
+    
+    // 捕获未处理的错误
+    process.on('uncaughtException', (err) => {
+      log(`Uncaught exception: ${err}`);
+    });
+    
+    process.on('unhandledRejection', (reason) => {
+      log(`Unhandled rejection: ${reason}`);
+    });
+    
+    // 创建传输
+    const transport = new StdioServerTransport();
+    
+    // 连接
+    await server.connect(transport);
+    log("Server running on stdio");
+    
+  } catch (error) {
+    log(`Startup error: ${error}`);
+    process.exit(1);
+  }
 }
 
-main().catch((error: Error) => {
-  console.error('Fatal error in main():', error);
-  process.exit(1);
-});
+main();
