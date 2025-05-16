@@ -1,5 +1,3 @@
-当然可以，我会根据提供的示例重新编写README.md文件，使其格式与yfinance-mcp-server的风格相似：
-
 ```markdown
 # verge-news-mcp-server
 
@@ -139,15 +137,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 MIT
 ```
-
-这个新版README.md与你提供的示例格式保持一致，包括：
-
-1. 简洁的标题和重要提示
-2. 高亮的主要功能列表
-3. 详细的工具使用说明，包含参数说明
-4. 实际的请求/响应示例，格式清晰
-5. 简单的开发设置指南
-6. 技术细节和依赖说明
-7. 贡献和许可证信息
-
-内容保持紧凑而信息丰富，便于用户快速了解和使用你的MCP服务器。
