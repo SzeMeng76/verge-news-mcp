@@ -3,34 +3,62 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import Parser from "rss-parser";
 
-// Initialize RSS parser
+// 初始化RSS解析器
 const parser = new Parser();
 const VERGE_RSS_URL = "https://www.theverge.com/rss/index.xml";
 
-// Create MCP server with all capabilities
+// 创建MCP服务器，简化配置与第一个例子类似
 const server = new McpServer({
   name: "verge-news",
-  version: "1.0.0",
-  capabilities: {
-    tools: {},
-    resources: {},
-    prompts: {}
-  }
+  version: "1.0.0"
 });
 
-// Helper function to fetch and parse RSS feed
+// 定义接口
+interface NewsItem {
+  title: string;
+  link: string;
+  pubDate: string;
+  creator: string;
+  content: string;
+}
+
+// 辅助函数：获取并解析RSS订阅
 async function fetchVergeNews() {
   try {
     const feed = await parser.parseURL(VERGE_RSS_URL);
     return feed.items;
   } catch (error) {
     console.error("Error fetching RSS feed:", error);
-    throw new Error("Failed to fetch news from The Verge");
+    return null;
   }
 }
 
-// Helper function to format news items
-function formatNewsItems(items: Parser.Item[]) {
+// 辅助函数：按日期筛选新闻
+function filterNewsByDate(items, daysBack) {
+  const now = new Date();
+  const cutoffDate = new Date(now.setDate(now.getDate() - daysBack));
+  
+  return items.filter((item) => {
+    if (!item.pubDate) return false;
+    const pubDate = new Date(item.pubDate);
+    return pubDate >= cutoffDate;
+  });
+}
+
+// 辅助函数：按关键词筛选新闻
+function filterNewsByKeyword(items, keyword) {
+  const lowerKeyword = keyword.toLowerCase();
+  
+  return items.filter((item) => {
+    const title = (item.title || "").toLowerCase();
+    const content = (item.contentSnippet || item.content || "").toLowerCase();
+    
+    return title.includes(lowerKeyword) || content.includes(lowerKeyword);
+  });
+}
+
+// 辅助函数：格式化新闻项
+function formatNewsItems(items) {
   return items.map((item) => {
     return {
       title: item.title || "No title",
@@ -42,59 +70,17 @@ function formatNewsItems(items: Parser.Item[]) {
   });
 }
 
-// Helper function to filter news by date
-function filterNewsByDate(items: Parser.Item[], daysBack: number) {
-  const now = new Date();
-  const cutoffDate = new Date(now.setDate(now.getDate() - daysBack));
-  
-  return items.filter((item) => {
-    if (!item.pubDate) return false;
-    const pubDate = new Date(item.pubDate);
-    return pubDate >= cutoffDate;
-  });
-}
-
-// Helper function to filter news by keyword
-function filterNewsByKeyword(items: Parser.Item[], keyword: string) {
-  const lowerKeyword = keyword.toLowerCase();
-  
-  return items.filter((item) => {
-    const title = (item.title || "").toLowerCase();
-    const content = (item.contentSnippet || item.content || "").toLowerCase();
-    
-    return title.includes(lowerKeyword) || content.includes(lowerKeyword);
-  });
-}
-
-// Helper function to format news as text
-function formatNewsAsText(items: ReturnType<typeof formatNewsItems>) {
-  if (items.length === 0) {
+// 辅助函数：将新闻格式化为简要摘要
+function formatNewsAsBriefSummary(items, limit = 10) {
+  if (!items || items.length === 0) {
     return "No news articles found for the specified time period.";
   }
   
-  return items.map((item, index) => {
-    return `
-${index + 1}. ${item.title}
-   Published: ${item.pubDate}
-   Author: ${item.creator}
-   Link: ${item.link}
-   
-   ${item.content}
-   `;
-  }).join("\n---\n");
-}
-
-// Helper function to format news as brief summaries
-function formatNewsAsBriefSummary(items: ReturnType<typeof formatNewsItems>, limit: number = 10) {
-  if (items.length === 0) {
-    return "No news articles found for the specified time period.";
-  }
-  
-  // Limit the number of items
+  // 限制项目数量
   const limitedItems = items.slice(0, limit);
   
   return limitedItems.map((item, index) => {
-    // Extract a brief summary (first 150 characters)
+    // 提取简短摘要(前150个字符)
     const summary = item.content.substring(0, 150).trim() + (item.content.length > 150 ? "..." : "");
     
     return `
@@ -105,194 +91,84 @@ ${index + 1}. ${item.title}
   }).join("\n---\n");
 }
 
-// Helper function to randomly select news items
-function getRandomNewsItems(items: Parser.Item[], count: number = 10) {
-  if (items.length <= count) {
-    return items; // Return all items if there are fewer than requested
+// 注册工具：获取每日新闻
+server.tool(
+  "get-daily-news",
+  "Get the latest news from The Verge for today",
+  {},
+  async () => {
+    const allNews = await fetchVergeNews();
+    if (!allNews) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Failed to retrieve news data"
+          }
+        ]
+      };
+    }
+    
+    const todayNews = filterNewsByDate(allNews, 1); // 过去24小时
+    const formattedNews = formatNewsItems(todayNews);
+    const newsText = formatNewsAsBriefSummary(formattedNews, 10);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `# The Verge - Today's News\n\n${newsText}`
+        }
+      ]
+    };
   }
-  
-  // Create a copy of the array to avoid modifying the original
-  const itemsCopy = [...items];
-  const result: Parser.Item[] = [];
-  
-  // Randomly select 'count' items
-  for (let i = 0; i < count; i++) {
-    if (itemsCopy.length === 0) break;
-    
-    // Get a random index
-    const randomIndex = Math.floor(Math.random() * itemsCopy.length);
-    
-    // Add the randomly selected item to the result
-    result.push(itemsCopy[randomIndex]);
-    
-    // Remove the selected item to avoid duplicates
-    itemsCopy.splice(randomIndex, 1);
-  }
-  
-  return result;
-}
+);
 
-// Main function to start the server
+// 注册工具：搜索新闻
+server.tool(
+  "search-news",
+  "Search for news articles from The Verge by keyword",
+  {
+    keyword: z.string(),
+    days: z.number().optional().default(30)
+  },
+  async ({ keyword, days = 30 }) => {
+    const allNews = await fetchVergeNews();
+    if (!allNews) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Failed to retrieve news data"
+          }
+        ]
+      };
+    }
+    
+    const filteredByDate = filterNewsByDate(allNews, days);
+    const filteredByKeyword = filterNewsByKeyword(filteredByDate, keyword);
+    const formattedNews = formatNewsItems(filteredByKeyword);
+    const newsText = formatNewsAsBriefSummary(formattedNews, 10);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `# The Verge - Search Results for "${keyword}"\n\n${newsText}`
+        }
+      ]
+    };
+  }
+);
+
+// 主函数：启动服务器
 async function main() {
-  try {
-    // Register tool for daily news
-    server.tool(
-      "get-daily-news",
-      "Get the latest news from The Verge for today",
-      {},
-      async () => {
-        try {
-          const allNews = await fetchVergeNews();
-          const todayNews = filterNewsByDate(allNews, 1); // Last 24 hours
-          const formattedNews = formatNewsItems(todayNews);
-          const newsText = formatNewsAsBriefSummary(formattedNews, 10); // Limit to 10 items with brief summaries
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# The Verge - Today's News\n\n${newsText}`
-              }
-            ]
-          };
-        } catch (error) {
-          console.error("Error in get-daily-news:", error);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Error fetching daily news: ${error instanceof Error ? error.message : String(error)}`
-              }
-            ],
-            isError: true
-          };
-        }
-      }
-    );
-    
-    // Register tool for weekly news
-    server.tool(
-      "get-weekly-news",
-      "Get the latest news from The Verge for the past week",
-      {},
-      async () => {
-        try {
-          const allNews = await fetchVergeNews();
-          const weeklyNews = filterNewsByDate(allNews, 7); // Last 7 days
-          
-          // Randomly select 10 news items from the past week
-          const randomWeeklyNews = getRandomNewsItems(weeklyNews, 10);
-          
-          const formattedNews = formatNewsItems(randomWeeklyNews);
-          const newsText = formatNewsAsBriefSummary(formattedNews);
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# The Verge - Random Weekly News\n\n${newsText}`
-              }
-            ]
-          };
-        } catch (error) {
-          console.error("Error in get-weekly-news:", error);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Error fetching weekly news: ${error instanceof Error ? error.message : String(error)}`
-              }
-            ],
-            isError: true
-          };
-        }
-      }
-    );
-    
-    // Register tool for searching news by keyword
-    server.tool(
-      "search-news",
-      "Search for news articles from The Verge by keyword",
-      {
-        keyword: z.string().describe("Keyword to search for in news articles"),
-        days: z.number().optional().describe("Number of days to look back (default: 30)")
-      },
-      async ({ keyword, days = 30 }) => {
-        try {
-          const allNews = await fetchVergeNews();
-          const filteredByDate = filterNewsByDate(allNews, days);
-          const filteredByKeyword = filterNewsByKeyword(filteredByDate, keyword);
-          const formattedNews = formatNewsItems(filteredByKeyword);
-          const newsText = formatNewsAsBriefSummary(formattedNews, 10); // Use brief summary format with limit of 10
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# The Verge - Search Results for "${keyword}"\n\n${newsText}`
-              }
-            ]
-          };
-        } catch (error) {
-          console.error("Error in search-news:", error);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Error searching news: ${error instanceof Error ? error.message : String(error)}`
-              }
-            ],
-            isError: true
-          };
-        }
-      }
-    );
-    
-    // Then implement resource handlers
-    server.resource(
-      "news-archive",
-      "news://archive",
-      async (uri) => ({
-        contents: [{
-          uri: uri.href,
-          text: "This would be an archive of news articles"
-        }]
-      })
-    );
-
-    // And prompt handlers
-    server.prompt(
-      "news-summary",
-      "Summarize news from The Verge for a specified period",
-      {
-        days: z.string().optional().describe("Number of days to summarize (default: 7)")
-      },
-      (args, extra) => {
-        const days = args.days ? parseInt(args.days, 10) : 7;
-        
-        return {
-          messages: [{
-            role: "user",
-            content: {
-              type: "text",
-              text: `Please summarize the news from the past ${days} days.`
-            }
-          }]
-        };
-      }
-    );
-    
-    // Connect to transport
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Verge News MCP Server running on stdio");
-  } catch (error) {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-  }
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.log('Verge News MCP Server running on stdio');
 }
 
 main().catch((error) => {
-  console.error("Unhandled error:", error);
+  console.error('Fatal error in main():', error);
   process.exit(1);
-}); 
+});
