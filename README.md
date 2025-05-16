@@ -1,4 +1,3 @@
-```markdown
 # verge-news-mcp-server
 
 **Important Note: This is an unofficial MCP server.**
