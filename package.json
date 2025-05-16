@@ -1,18 +1,16 @@
 {
   "name": "verge-news-mcp",
-  "version": "1.0.3",
-  "description": "MCP server for The Verge news RSS feed",
+  "version": "1.0.4",
+  "description": "MCP Server for The Verge news feed",
   "main": "build/index.js",
+  "bin": {
+    "verge-news-mcp": "build/index.js"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc && node build/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node build/index.js"
   },
-  "keywords": ["mcp", "news", "rss", "the-verge"],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.3",
     "rss-parser": "^3.13.0",
