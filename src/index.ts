@@ -7,13 +7,13 @@ import Parser from "rss-parser";
 const parser = new Parser();
 const VERGE_RSS_URL = "https://www.theverge.com/rss/index.xml";
 
-// 创建MCP服务器，简化配置与第一个例子类似
+// 创建MCP服务器
 const server = new McpServer({
   name: "verge-news",
   version: "1.0.0"
 });
 
-// 定义接口
+// 定义用于类型检查的接口
 interface NewsItem {
   title: string;
   link: string;
@@ -23,22 +23,22 @@ interface NewsItem {
 }
 
 // 辅助函数：获取并解析RSS订阅
-async function fetchVergeNews() {
+async function fetchVergeNews(): Promise<Parser.Item[]> {
   try {
     const feed = await parser.parseURL(VERGE_RSS_URL);
     return feed.items;
   } catch (error) {
     console.error("Error fetching RSS feed:", error);
-    return null;
+    return [];
   }
 }
 
 // 辅助函数：按日期筛选新闻
-function filterNewsByDate(items, daysBack) {
+function filterNewsByDate(items: Parser.Item[], daysBack: number): Parser.Item[] {
   const now = new Date();
   const cutoffDate = new Date(now.setDate(now.getDate() - daysBack));
   
-  return items.filter((item) => {
+  return items.filter((item: Parser.Item) => {
     if (!item.pubDate) return false;
     const pubDate = new Date(item.pubDate);
     return pubDate >= cutoffDate;
@@ -46,10 +46,10 @@ function filterNewsByDate(items, daysBack) {
 }
 
 // 辅助函数：按关键词筛选新闻
-function filterNewsByKeyword(items, keyword) {
+function filterNewsByKeyword(items: Parser.Item[], keyword: string): Parser.Item[] {
   const lowerKeyword = keyword.toLowerCase();
   
-  return items.filter((item) => {
+  return items.filter((item: Parser.Item) => {
     const title = (item.title || "").toLowerCase();
     const content = (item.contentSnippet || item.content || "").toLowerCase();
     
@@ -58,8 +58,8 @@ function filterNewsByKeyword(items, keyword) {
 }
 
 // 辅助函数：格式化新闻项
-function formatNewsItems(items) {
-  return items.map((item) => {
+function formatNewsItems(items: Parser.Item[]): NewsItem[] {
+  return items.map((item: Parser.Item) => {
     return {
       title: item.title || "No title",
       link: item.link || "#",
@@ -71,15 +71,15 @@ function formatNewsItems(items) {
 }
 
 // 辅助函数：将新闻格式化为简要摘要
-function formatNewsAsBriefSummary(items, limit = 10) {
-  if (!items || items.length === 0) {
+function formatNewsAsBriefSummary(items: NewsItem[], limit: number = 10): string {
+  if (items.length === 0) {
     return "No news articles found for the specified time period.";
   }
   
   // 限制项目数量
   const limitedItems = items.slice(0, limit);
   
-  return limitedItems.map((item, index) => {
+  return limitedItems.map((item: NewsItem, index: number) => {
     // 提取简短摘要(前150个字符)
     const summary = item.content.substring(0, 150).trim() + (item.content.length > 150 ? "..." : "");
     
@@ -98,7 +98,7 @@ server.tool(
   {},
   async () => {
     const allNews = await fetchVergeNews();
-    if (!allNews) {
+    if (allNews.length === 0) {
       return {
         content: [
           {
@@ -132,9 +132,9 @@ server.tool(
     keyword: z.string(),
     days: z.number().optional().default(30)
   },
-  async ({ keyword, days = 30 }) => {
+  async ({ keyword, days = 30 }: { keyword: string; days?: number }) => {
     const allNews = await fetchVergeNews();
-    if (!allNews) {
+    if (allNews.length === 0) {
       return {
         content: [
           {
@@ -162,13 +162,13 @@ server.tool(
 );
 
 // 主函数：启动服务器
-async function main() {
+async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.log('Verge News MCP Server running on stdio');
 }
 
-main().catch((error) => {
+main().catch((error: Error) => {
   console.error('Fatal error in main():', error);
   process.exit(1);
 });
