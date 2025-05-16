@@ -1,8 +1,8 @@
-```markdown
-# Verge News MCP
-
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+```markdown
+# Verge News MCP
 
 A Model Context Protocol (MCP) server for retrieving and searching news articles from The Verge.
 
