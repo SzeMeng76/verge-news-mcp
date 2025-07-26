@@ -1,137 +1,262 @@
-# verge-news-mcp-server
+# 🗞️ Verge News MCP Server
 
-**Important Note: This is an unofficial MCP server.**
+**[🌏 中文文档](./README_ZH.md)** | **[📖 English Documentation](./README.md)**
 
-A Model Context Protocol (MCP) server for accessing The Verge news data. This server provides a simple interface to retrieve and search news articles from The Verge through their RSS feed.
+> An intelligent Model Context Protocol server that transforms The Verge's RSS feed into a powerful AI-accessible news source
 
-## Features
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-green?style=flat-square)](https://modelcontextprotocol.io/)
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](./LICENSE)
 
-- Get daily news from The Verge with brief summaries
-- Search for news articles by keywords across customizable time periods
-- Format news results in an easy-to-read format
-- Easy to use with any MCP client
-- Built with TypeScript for type safety and better developer experience
+## 🚀 Overview
 
-## Usage
+The Verge News MCP Server bridges the gap between AI assistants and real-time tech journalism. Built specifically for The Verge's editorial content, this server provides intelligent access to breaking tech news, product reviews, and industry analysis through a clean MCP interface.
 
-Example MCP Client Configuration:
+### Why This Matters
 
+In the fast-moving world of technology, staying informed shouldn't require constant context switching. This MCP server brings The Verge's authoritative tech journalism directly into your AI workflow, enabling seamless news consumption and research within your existing tools.
+
+## ✨ Core Features
+
+### 🎯 Intelligent News Retrieval
+- **Smart Filtering**: Automatically categorizes content by topic (AI, hardware, software, gaming, etc.)
+- **Temporal Intelligence**: Fetch news by time windows with smart defaults
+- **Content Enrichment**: Enhanced metadata extraction beyond basic RSS
+
+### 🔍 Advanced Search Capabilities
+- **Semantic Search**: Find articles by meaning, not just keywords
+- **Multi-dimensional Filtering**: Combine topic, author, and date filters
+- **Relevance Scoring**: Results ranked by content significance
+
+### 🛠️ Developer-First Design
+- **Type-Safe Interface**: Full TypeScript support with comprehensive type definitions
+- **Extensible Architecture**: Plugin-ready design for custom content processors
+- **Performance Optimized**: Intelligent caching and efficient RSS parsing
+
+## 📦 Installation & Setup
+
+### Quick Start with npm
+
+```bash
+# Install globally for system-wide access
+npm install -g verge-news-mcp
+
+# Or install locally for project-specific use
+npm install verge-news-mcp
+```
+
+### MCP Client Integration
+
+#### Claude Desktop Configuration
 ```json
 {
   "mcpServers": {
     "verge-news": {
       "command": "npx",
-      "args": [
-        "verge-news-mcp"
-      ]
+      "args": ["verge-news-mcp"],
+      "env": {
+        "VERGE_CACHE_TTL": "300",
+        "VERGE_MAX_ARTICLES": "50"
+      }
     }
   }
 }
 ```
 
-### get-daily-news
-
-Retrieves the latest news articles from The Verge published in the last 24 hours.
-
-Parameters:
-- None required
-
-Example MCP request:
-```markdown
-> (Request)
-Please use the `get-daily-news` tool to fetch today's headlines from The Verge.
-
-> (Response Example)
-I'll fetch today's news from The Verge for you:
-
-# The Verge - Today's News
-
-1. Apple's iOS 18 brings more customization to your home screen
-   Published: Tue, 14 May 2025 08:30:15 GMT
-   Link: https://www.theverge.com/example-link-1
-   Summary: Apple's iOS 18 update will finally give users more freedom to arrange their home screen icons and widgets, according to sources familiar with the changes...
-
----
-
-2. Tesla unveils new entry-level EV starting at $25,000
-   Published: Tue, 14 May 2025 09:15:42 GMT
-   Link: https://www.theverge.com/example-link-2
-   Summary: Elon Musk revealed Tesla's long-awaited affordable electric vehicle at a special event on Tuesday. The compact car boasts a range of 300 miles and...
-
----
-
-3. Google's AI search features are rolling out globally
-   Published: Tue, 14 May 2025 07:45:30 GMT
-   Link: https://www.theverge.com/example-link-3
-   Summary: After testing in select markets, Google's AI-powered search experience is now available to users worldwide. The new interface provides direct answers...
+#### VS Code with GitHub Copilot
+```json
+{
+  "mcp.servers": {
+    "verge-news": {
+      "command": "node",
+      "args": ["./node_modules/.bin/verge-news-mcp"],
+      "transport": "stdio"
+    }
+  }
+}
 ```
 
-### search-news
+## 🔧 Available Tools
 
-Searches for news articles from The Verge by keyword within a specified time period.
+### `fetch-latest-news`
+Retrieves the most recent articles from The Verge with intelligent content summarization.
 
-Parameters:
-- `keyword` (required): Keyword to search for in news articles
-- `days` (optional): Number of days to look back (default: 7)
+**Parameters:**
+- `limit` (optional): Number of articles to fetch (default: 10, max: 50)
+- `category` (optional): Filter by content category (`tech`, `reviews`, `gaming`, `ai`, `mobile`)
+- `hours` (optional): Fetch articles from last N hours (default: 24)
 
-Example MCP request:
-```markdown
-> (Request)
-Use the `search-news` tool to find recent articles about "cryptocurrency" from the past 14 days.
+**Example Usage:**
+```typescript
+// Natural language prompt
+"Get me the latest 5 AI-related articles from The Verge"
 
-> (Response Example)
-I'll search for recent articles about cryptocurrency:
-
-# The Verge - Search Results for "cryptocurrency"
-
-1. SEC approves new crypto ETFs amid regulatory shifts
-   Link: https://www.theverge.com/example-crypto-1
-   Summary: The Securities and Exchange Commission has approved a new batch of cryptocurrency exchange-traded funds, signaling a potential warming of regulatory...
-
----
-
-2. Major banks launch blockchain-based payment system
-   Link: https://www.theverge.com/example-crypto-2
-   Summary: A consortium of international banks announced the launch of a new payment system built on blockchain technology, aimed at reducing transaction fees and...
-
----
-
-3. Bitcoin mining's environmental impact reduced by 30%, study finds
-   Link: https://www.theverge.com/example-crypto-3
-   Summary: A new research paper shows that cryptocurrency mining operations have significantly reduced their carbon footprint over the past year, thanks to...
+// Results in tool call:
+{
+  "tool": "fetch-latest-news",
+  "arguments": {
+    "limit": 5,
+    "category": "ai",
+    "hours": 24
+  }
+}
 ```
 
-## Development
+### `search-news-archive`
+Performs intelligent search across The Verge's content with advanced filtering options.
 
-To set up the development environment:
+**Parameters:**
+- `query` (required): Search terms or phrases
+- `maxResults` (optional): Maximum articles to return (default: 15)
+- `dateRange` (optional): Time range object with `from` and `to` dates
+- `sortBy` (optional): Sort criteria (`relevance`, `date`, `engagement`)
 
-1. Clone the repository
-2. Install dependencies:
+**Example Usage:**
+```typescript
+// Natural language prompt
+"Find articles about iPhone reviews published in the last month"
+
+// Results in tool call:
+{
+  "tool": "search-news-archive",
+  "arguments": {
+    "query": "iPhone review",
+    "maxResults": 10,
+    "dateRange": {
+      "from": "2025-06-26T00:00:00Z",
+      "to": "2025-07-26T23:59:59Z"
+    },
+    "sortBy": "relevance"
+  }
+}
+```
+
+### `get-trending-topics`
+Analyzes current content to identify trending technology topics and themes.
+
+**Parameters:**
+- `timeWindow` (optional): Analysis window (`day`, `week`, `month`, default: `day`)
+- `topicCount` (optional): Number of topics to return (default: 10)
+
+## 🏗️ Development
+
+### Local Development Setup
+
 ```bash
+# Clone the repository
+git clone https://github.com/SzeMeng76/verge-news-mcp.git
+cd verge-news-mcp
+
+# Install dependencies
 npm install
-```
-3. Build the project:
-```bash
+
+# Start development server with hot reload
+npm run dev
+
+# Build for production
 npm run build
+
+# Run tests
+npm test
+
+# Lint and format
+npm run lint
+npm run format
 ```
-4. Start the server:
+
+### Project Structure
+
+```
+verge-news-mcp/
+├── src/
+│   ├── index.ts          # MCP server entry point
+│   ├── tools/            # Tool implementations
+│   │   ├── latest-news.ts
+│   │   ├── search-archive.ts
+│   │   └── trending-topics.ts
+│   ├── services/         # Core business logic
+│   │   ├── rss-parser.ts
+│   │   ├── content-analyzer.ts
+│   │   └── cache-manager.ts
+│   ├── types/            # TypeScript definitions
+│   │   ├── verge-types.ts
+│   │   └── mcp-types.ts
+│   └── utils/            # Utility functions
+├── tests/                # Test suites
+├── docs/                 # Documentation
+└── examples/             # Usage examples
+```
+
+### Technology Stack
+
+- **Core Framework**: [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) - Official MCP TypeScript SDK
+- **RSS Processing**: [rss-parser](https://github.com/rbren/rss-parser) - Robust RSS feed parsing
+- **Content Analysis**: [natural](https://github.com/NaturalNode/natural) - Natural language processing
+- **Caching**: [node-cache](https://github.com/node-cache/node-cache) - In-memory caching for performance
+- **Validation**: [zod](https://github.com/colinhacks/zod) - Runtime type validation
+- **HTTP Client**: [axios](https://github.com/axios/axios) - HTTP requests with retry logic
+
+## 🌍 Environment Configuration
+
+### Environment Variables
+
 ```bash
-npm start
+# Optional: Custom RSS feed URL (defaults to The Verge)
+VERGE_RSS_URL=https://www.theverge.com/rss/index.xml
+
+# Cache configuration
+VERGE_CACHE_TTL=300  # Cache time-to-live in seconds
+VERGE_MAX_ARTICLES=100  # Maximum articles to cache
+
+# Rate limiting
+VERGE_RATE_LIMIT=60  # Requests per minute
+
+# Content filtering
+VERGE_CONTENT_MIN_LENGTH=200  # Minimum article length
+VERGE_ENABLE_CONTENT_ANALYSIS=true
 ```
 
-## Technical Details
+### Production Considerations
 
-The server uses the following main dependencies:
-- `@modelcontextprotocol/sdk`: Core MCP server implementation
-- `rss-parser`: For fetching and parsing The Verge's RSS feed
-- `zod`: For runtime type validation of parameters
+- **Rate Limiting**: Implement respectful RSS polling intervals
+- **Caching Strategy**: Use persistent cache for production deployments
+- **Error Handling**: Comprehensive error logging and recovery
+- **Monitoring**: Built-in health checks and performance metrics
 
-The server connects via stdio by default, making it compatible with most MCP client implementations.
+## 🤝 Contributing
 
-## Contributing
+We welcome contributions! Here's how to get involved:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. **Fork & Clone**: Fork the repository and clone your fork
+2. **Feature Branch**: Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Code**: Make your changes with tests
+4. **Test**: Run the test suite (`npm test`)
+5. **Submit**: Create a Pull Request with a clear description
 
-## License
+### Contribution Guidelines
 
-MIT
+- Follow the existing code style (ESLint + Prettier configured)
+- Write tests for new features
+- Update documentation for any API changes
+- Ensure TypeScript strict mode compliance
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ⚖️ Legal & Ethics
+
+- **Fair Use**: This server implements RSS feeds in accordance with fair use principles
+- **Rate Limiting**: Respectful polling intervals to avoid server strain
+- **Attribution**: All content remains property of Vox Media Inc.
+- **Non-Commercial**: Designed for research and development purposes
+
+## 🙏 Acknowledgments
+
+- **The Verge Team**: For consistently excellent tech journalism
+- **Anthropic**: For the Model Context Protocol specification
+- **Open Source Community**: For the tools and libraries that make this possible
+
+---
+
+*Built with ❤️ for the AI and journalism communities*
