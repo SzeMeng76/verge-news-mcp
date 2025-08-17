@@ -1,6 +1,6 @@
 {
   "name": "verge-news-mcp",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "MCP Server for The Verge news feed",
   "main": "build/index.js",
   "bin": {
@@ -12,12 +12,12 @@
     "start": "node build/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.3",
+    "@modelcontextprotocol/sdk": "^1.17.3",
     "rss-parser": "^3.13.0",
-    "zod": "^3.24.4"
+    "zod": "^4.0.17"
   },
   "devDependencies": {
-    "@types/node": "^22.15.18",
-    "typescript": "^5.8.3"
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
   }
 }
